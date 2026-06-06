@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>今日选股建议</title>
+  <th:block th:replace="~{fragments :: head-assets}"></th:block>
+</head>
+<body th:with="active='signals'">
+  <header th:replace="~{fragments :: header(${market})}"></header>
+  <nav th:replace="~{fragments :: tabs(${market})}"></nav>
+
+  <div class="container">
+    <h1 class="page-title">今日选股建议</h1>
+    <div th:replace="~{fragments :: disclaimer}"></div>
+
+    <!-- 推送结果回显 -->
+    <div th:if="${pushResult != null}" class="push-result" th:text="${pushResult}">推送结果</div>
+
+    <div class="card">
+      <div class="toolbar">
+        <!-- 推送到微信 -->
+        <form method="post" th:action="@{/push}">
+          <input type="hidden" name="market" th:value="${market}">
+          <button type="submit">推送到微信</button>
+        </form>
+        <span th:unless="${pushConfigured}" class="push-hint">未配置 Server酱 SendKey</span>
+
+        <!-- 刷新最新数据:清缓存、立即重新触网(默认面板缓存 30 分钟) -->
+        <form method="post" th:action="@{/refresh}">
+          <input type="hidden" name="market" th:value="${market}">
+          <input type="hidden" name="from" value="/signals">
+          <button type="submit" class="btn-secondary">刷新最新数据</button>
+        </form>
+        <span class="push-hint">行情面板默认缓存 30 分钟,点此立即拉取最新</span>
+      </div>
+
+      <!-- 无数据降级提示 -->
+      <div th:unless="${view.hasData()}" class="empty">
+        暂无数据,请稍后或检查网络 / 代理(A股本机联调常因代理被拦,属预期)。
+      </div>
+
+      <div th:if="${view.hasData()}">
+        <p class="meta">数据最新交易日:<span th:text="${view.latestDay()}">-</span></p>
+
+        <div th:if="${view.stale()}" class="stale">
+          数据可能因数据源限流 / 代理未更新到最新,当前为本地缓存价。
+        </div>
+
+        <!-- 可选持仓输入:提交后带出 hold/sell -->
+        <form method="get" th:action="@{/signals}">
+          <input type="hidden" name="market" th:value="${market}">
+          <div class="form-row">
+            <div class="form-field">
+              <label>持有 code(逗号分隔)</label>
+              <input type="text" name="holdings" th:value="${view.holdingsCsv()}"
+                     placeholder="如 AAPL,MSFT 或 600519,000001">
+            </div>
+            <div class="form-field">
+              <label>入场价(可选,code:price 逗号分隔)</label>
+              <input type="text" name="entryPrice" placeholder="如 AAPL:180,MSFT:400">
+            </div>
+            <button type="submit">查看持有 / 卖出建议</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div th:if="${view.hasData()}">
+      <!-- 该买 -->
+      <div class="card">
+        <h2 class="section-title"><span class="dot dot-buy"></span>该买(选股器当日 Top<span th:text="${view.reco().buy().size()}">N</span>)</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>rank</th><th>code</th><th>名称</th><th>现价</th><th class="numeric">涨跌幅</th><th class="numeric">市值</th><th>score</th><th>reason</th><th>是否已持有</th>
+            </tr></thead>
+            <tbody>
+              <tr th:each="item, st : ${view.reco().buy()}">
+                <td th:text="${st.count}">1</td>
+                <td><a th:href="@{/chart(market=${market},code=${item.code()})}" th:text="${item.code()}">CODE</a></td>
+                <td th:text="${view.nameOf(item.code())}">名称</td>
+                <td th:text="${#numbers.formatDecimal(item.price(), 1, 2)}">0.00</td>
+                <td class="numeric" th:classappend="${view.changeClass(item.code())}" th:text="${view.changeDisplay(item.code())}">N/A</td>
+                <td class="numeric" th:text="${view.marketCapDisplay(item.code())}">N/A</td>
+                <td th:text="${#numbers.formatDecimal(item.score(), 1, 4)}">0</td>
+                <td th:text="${item.reason()}">reason</td>
+                <td>
+                  <span th:if="${item.held()}" class="badge-held" th:text="'已持有'">已持有</span>
+                </td>
+              </tr>
+              <tr th:if="${view.reco().buy().isEmpty()}"><td colspan="9" class="empty">当日无买入名单</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 继续持有 -->
+      <div class="card">
+        <h2 class="section-title"><span class="dot dot-hold"></span>继续持有</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>code</th><th>名称</th><th>现价</th><th class="numeric">涨跌幅</th><th class="numeric">市值</th><th>score</th><th>reason</th></tr></thead>
+            <tbody>
+              <tr th:each="item : ${view.reco().hold()}">
+                <td><a th:href="@{/chart(market=${market},code=${item.code()})}" th:text="${item.code()}">CODE</a></td>
+                <td th:text="${view.nameOf(item.code())}">名称</td>
+                <td th:text="${#numbers.formatDecimal(item.price(), 1, 2)}">0.00</td>
+                <td class="numeric" th:classappend="${view.changeClass(item.code())}" th:text="${view.changeDisplay(item.code())}">N/A</td>
+                <td class="numeric" th:text="${view.marketCapDisplay(item.code())}">N/A</td>
+                <td th:text="${item.score() == item.score()} ? ${#numbers.formatDecimal(item.score(), 1, 4)} : 'N/A'">0</td>
+                <td th:text="${item.reason()}">reason</td>
+              </tr>
+              <tr th:if="${view.reco().hold().isEmpty()}"><td colspan="7" class="empty">无(未提交持仓或全部已卖出)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 该卖 -->
+      <div class="card">
+        <h2 class="section-title"><span class="dot dot-sell"></span>该卖</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>code</th><th>名称</th><th>现价</th><th class="numeric">涨跌幅</th><th class="numeric">市值</th><th>score</th><th>reason</th></tr></thead>
+            <tbody>
+              <tr th:each="item : ${view.reco().sell()}">
+                <td><a th:href="@{/chart(market=${market},code=${item.code()})}" th:text="${item.code()}">CODE</a></td>
+                <td th:text="${view.nameOf(item.code())}">名称</td>
+                <td th:text="${#numbers.formatDecimal(item.price(), 1, 2)}">0.00</td>
+                <td class="numeric" th:classappend="${view.changeClass(item.code())}" th:text="${view.changeDisplay(item.code())}">N/A</td>
+                <td class="numeric" th:text="${view.marketCapDisplay(item.code())}">N/A</td>
+                <td th:text="${#numbers.formatDecimal(item.score(), 1, 4)}">0</td>
+                <td th:text="${item.reason()}">reason</td>
+              </tr>
+              <tr th:if="${view.reco().sell().isEmpty()}"><td colspan="7" class="empty">无卖出建议</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

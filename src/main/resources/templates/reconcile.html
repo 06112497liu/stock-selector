@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>对账</title>
+  <th:block th:replace="~{fragments :: head-assets}"></th:block>
+  <style>
+    .code-in { width: 140px; } .num-in { width: 140px; }
+    #rows td { padding: 8px 10px; }
+  </style>
+</head>
+<body th:with="active='reconcile'">
+  <header th:replace="~{fragments :: header(${market})}"></header>
+  <nav th:replace="~{fragments :: tabs(${market})}"></nav>
+
+  <div class="container">
+    <h1 class="page-title">对账(<span th:text="${market == 'cn'} ? 'A股' : '美股'">市场</span>)</h1>
+    <div th:replace="~{fragments :: disclaimer}"></div>
+
+    <div class="info-hint">
+      对账 = 把账本改成你在券商的真实持仓与现金。保存后会<b>整体替换</b>当前账本,
+      并<b>清空净值历史、以对账后的净值为新基准重新锚定</b>(避免旧净值峰值误导回撤判断)。
+      成本价(avg_cost)会被 /signals 当作止损入场价。本页不下单、不按资产算金额。
+    </div>
+
+    <div class="card">
+      <form method="post" th:action="@{/reconcile}">
+        <input type="hidden" name="market" th:value="${market}">
+
+        <div class="table-wrap">
+          <table id="rows">
+            <thead><tr><th>code</th><th>股数 shares</th><th>成本价 avg_cost</th><th>操作</th></tr></thead>
+            <tbody>
+              <tr th:each="entry : ${view.positions()}">
+                <td><input class="code-in" type="text" name="code" th:value="${entry.key}"></td>
+                <td><input class="num-in" type="number" step="any" name="shares" th:value="${entry.value.shares()}"></td>
+                <td><input class="num-in" type="number" step="any" name="avgCost" th:value="${entry.value.avgCost()}"></td>
+                <td><span class="danger" onclick="removeRow(this)">删除</span></td>
+              </tr>
+              <!-- 至少留一行空白方便首次录入 -->
+              <tr th:if="${view.positions().isEmpty()}">
+                <td><input class="code-in" type="text" name="code" placeholder="如 AAPL 或 600519"></td>
+                <td><input class="num-in" type="number" step="any" name="shares" placeholder="0"></td>
+                <td><input class="num-in" type="number" step="any" name="avgCost" placeholder="0.00"></td>
+                <td><span class="danger" onclick="removeRow(this)">删除</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p><button type="button" class="btn-secondary" onclick="addRow()">+ 增加一行</button></p>
+
+        <div class="form-row">
+          <div class="form-field">
+            <label>现金 cash</label>
+            <input class="num-in" type="number" step="any" name="cash" th:value="${view.cash()}">
+          </div>
+        </div>
+
+        <button type="submit">保存并对账</button>
+      </form>
+    </div>
+  </div>
+
+  <script th:inline="none">
+    function removeRow(el) {
+      var tr = el.closest('tr');
+      tr.parentNode.removeChild(tr);
+    }
+    function addRow() {
+      var tbody = document.querySelector('#rows tbody');
+      var tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td><input class="code-in" type="text" name="code" placeholder="如 AAPL 或 600519"></td>' +
+        '<td><input class="num-in" type="number" step="any" name="shares" placeholder="0"></td>' +
+        '<td><input class="num-in" type="number" step="any" name="avgCost" placeholder="0.00"></td>' +
+        '<td><span class="danger" onclick="removeRow(this)">删除</span></td>';
+      tbody.appendChild(tr);
+    }
+  </script>
+</body>
+</html>

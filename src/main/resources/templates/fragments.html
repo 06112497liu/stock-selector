@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"></head>
+<body>
+
+<!-- 公共 head 资源:统一引入 app.css(各页 th:replace 到自己的 <head>) -->
+<th:block th:fragment="head-assets">
+  <link rel="stylesheet" th:href="@{/css/app.css}">
+</th:block>
+
+<!-- 顶栏:站点标题 + 市场切换(segmented control) -->
+<header th:fragment="header(market)" class="site-header">
+  <div class="site-header-inner">
+    <span class="site-title">半自动量化选股</span>
+    <span class="nav-group market">
+      <a th:href="@{/signals(market='us')}"
+         th:classappend="${market == 'us'} ? 'active' : ''">美股(Yahoo)</a>
+      <a th:href="@{/signals(market='cn')}"
+         th:classappend="${market == 'cn'} ? 'active' : ''">A股(东财)</a>
+    </span>
+  </div>
+</header>
+
+<!-- 页面导航 tabs(位于顶栏下方) -->
+<nav th:fragment="tabs(market)" class="subnav">
+  <div class="subnav-inner nav">
+    <span class="nav-group tabs">
+      <a th:href="@{/signals(market=${market})}"
+         th:classappend="${active == 'signals'} ? 'active' : ''">今日信号</a>
+      <a th:href="@{/portfolio(market=${market})}"
+         th:classappend="${active == 'portfolio'} ? 'active' : ''">持仓与净值</a>
+      <a th:href="@{/reconcile(market=${market})}"
+         th:classappend="${active == 'reconcile'} ? 'active' : ''">对账</a>
+      <a th:href="@{/backtest(market=${market})}"
+         th:classappend="${active == 'backtest'} ? 'active' : ''">回测</a>
+      <a th:href="@{/params(market=${market})}"
+         th:classappend="${active == 'params'} ? 'active' : ''">参数配置</a>
+    </span>
+  </div>
+</nav>
+
+<!-- 免责声明横幅:醒目、不可省略 -->
+<div th:fragment="disclaimer" class="disclaimer">
+  ⚠ 本工具默认策略未经样本外验证,不构成投资建议,仅作学习 / 框架演示。
+  半自动选股工具:只给「该买 / 继续持有 / 该卖」纯名单,请人工去券商下单;
+  不自动下单、不记账、不按您的资产算股数金额。
+</div>
+
+</body>
+</html>

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>个股 K 线</title>
+  <th:block th:replace="~{fragments :: head-assets}"></th:block>
+</head>
+<body th:with="active=''">
+  <header th:replace="~{fragments :: header(${market})}"></header>
+
+  <div class="container">
+    <p class="meta">
+      <a th:href="@{/signals(market=${market})}">← 返回今日信号</a>
+    </p>
+
+    <h1 class="page-title">个股 K 线 · <span th:text="${code}">CODE</span></h1>
+    <div th:replace="~{fragments :: disclaimer}"></div>
+
+    <div class="card">
+      <!-- 周期切换:1分/5分/15分/30分/60分/日/周/月 -->
+      <div class="btn-bar">
+        <button type="button" class="btn-secondary period-btn" data-period="1m">1分</button>
+        <button type="button" class="btn-secondary period-btn" data-period="5m">5分</button>
+        <button type="button" class="btn-secondary period-btn" data-period="15m">15分</button>
+        <button type="button" class="btn-secondary period-btn" data-period="30m">30分</button>
+        <button type="button" class="btn-secondary period-btn" data-period="60m">60分</button>
+        <button type="button" class="btn-secondary period-btn active" data-period="1d">日</button>
+        <button type="button" class="btn-secondary period-btn" data-period="1wk">周</button>
+        <button type="button" class="btn-secondary period-btn" data-period="1mo">月</button>
+      </div>
+
+      <div id="kline"
+           th:attr="data-market=${market},data-code=${code}"
+           style="width:100%;height:480px;margin-top:14px;"></div>
+    </div>
+  </div>
+
+  <script th:src="@{/js/echarts.min.js}"></script>
+  <script th:src="@{/js/chart-page.js}"></script>
+</body>
+</html>

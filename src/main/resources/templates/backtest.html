@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>样本外回测</title>
+  <th:block th:replace="~{fragments :: head-assets}"></th:block>
+</head>
+<body th:with="active='backtest'">
+  <header th:replace="~{fragments :: header(${market})}"></header>
+  <nav th:replace="~{fragments :: tabs(${market})}"></nav>
+
+  <div class="container">
+    <h1 class="page-title">样本外回测</h1>
+    <div th:replace="~{fragments :: disclaimer}"></div>
+
+    <div class="card">
+      <div class="toolbar">
+        <!-- 刷新最新数据:清面板 + 回测缓存,下次重训 ML / 重跑回测 -->
+        <form method="post" th:action="@{/refresh}">
+          <input type="hidden" name="market" th:value="${market}">
+          <input type="hidden" name="from" value="/backtest">
+          <button type="submit" class="btn-secondary">刷新最新数据</button>
+        </form>
+      </div>
+
+      <p class="note">
+        本页为<b>样本外回测</b>:取全部交易日,在前 70% 处切为样本外起点,其后区间并排跑
+        <b>Factor</b>(加权因子)与 <b>ML</b>(Smile 梯度提升树)两套策略。
+        ML 在样本外起点用其<b>之前</b>的数据训练一次,并留 H=5 个交易日 embargo(防标签泄漏)。
+        两套策略 alpha <b>均未经验证、ML 同样可能过拟合</b>,以下指标纯框架演示,不代表能赚钱。
+      </p>
+
+      <div th:unless="${view.hasData()}" class="empty">
+        暂无数据,请稍后或检查网络 / 代理(A股本机联调常因代理被拦,属预期)。
+      </div>
+
+      <div th:if="${view.hasData()}">
+        <p class="meta">样本外起点(信号起始日):<span th:text="${view.splitStart()}">-</span></p>
+        <p class="meta">ML 训练状态:
+          <span th:if="${view.mlTrained()}"
+                th:text="'已训练(样本 ' + ${view.mlTrainSamples()} + ' 条,标签区间 ≤ 起点,留 5 日 embargo)'">-</span>
+          <span th:unless="${view.mlTrained()}"
+                th:text="'未训练(样本 ' + ${view.mlTrainSamples()} + ' 条 < 阈值,ML 列退化为空仓)'">-</span>
+        </p>
+      </div>
+    </div>
+
+    <div th:if="${view.hasData()}">
+      <div class="card">
+        <h2 class="section-title">绩效指标(metrics)对比</h2>
+        <div class="table-wrap">
+          <table class="numeric">
+            <thead><tr><th class="name">指标</th><th>Factor(加权因子)</th><th>ML(梯度提升树)</th></tr></thead>
+            <tbody>
+              <tr><th class="name">annReturn(年化收益)</th>
+                  <td th:text="${#numbers.formatDecimal(view.factorResult().metrics().annReturn() * 100, 1, 2)} + ' %'">-</td>
+                  <td th:text="${#numbers.formatDecimal(view.mlResult().metrics().annReturn() * 100, 1, 2)} + ' %'">-</td></tr>
+              <tr><th class="name">sharpe(夏普)</th>
+                  <td th:text="${#numbers.formatDecimal(view.factorResult().metrics().sharpe(), 1, 3)}">-</td>
+                  <td th:text="${#numbers.formatDecimal(view.mlResult().metrics().sharpe(), 1, 3)}">-</td></tr>
+              <tr><th class="name">maxDrawdown(最大回撤)</th>
+                  <td th:text="${#numbers.formatDecimal(view.factorResult().metrics().maxDrawdown() * 100, 1, 2)} + ' %'">-</td>
+                  <td th:text="${#numbers.formatDecimal(view.mlResult().metrics().maxDrawdown() * 100, 1, 2)} + ' %'">-</td></tr>
+              <tr><th class="name">winRate(胜率)</th>
+                  <td th:text="${#numbers.formatDecimal(view.factorResult().metrics().winRate() * 100, 1, 2)} + ' %'">-</td>
+                  <td th:text="${#numbers.formatDecimal(view.mlResult().metrics().winRate() * 100, 1, 2)} + ' %'">-</td></tr>
+              <tr><th class="name">nav 末值</th>
+                  <td th:text="${#numbers.formatDecimal(view.factorNavEnd(), 1, 4)}">-</td>
+                  <td th:text="${#numbers.formatDecimal(view.mlNavEnd(), 1, 4)}">-</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">净值曲线(同坐标系叠加)</h2>
+        <p class="legend">
+          <span class="factor">━ Factor</span>
+          <span class="ml">━ ML</span>
+        </p>
+        <!-- 内联 SVG:两条折线共用同一 y 量程;points 由后端预计算 -->
+        <svg class="chart" width="640" height="240"
+             th:with="fpoly=${view.factorPolyline()},mpoly=${view.mlPolyline()}">
+          <polyline th:if="${!fpoly.isEmpty()}" fill="none" stroke="#2563eb" stroke-width="1.5"
+                    th:points="${fpoly}"/>
+          <polyline th:if="${!mpoly.isEmpty()}" fill="none" stroke="#dc2626" stroke-width="1.5"
+                    th:points="${mpoly}"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

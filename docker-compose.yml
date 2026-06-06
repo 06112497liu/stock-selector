@@ -1,0 +1,36 @@
+services:
+  web:
+    build: .
+    image: ai-stock-selector-java:local
+    ports:
+      - "8080:8080"
+    environment:
+      # Server酱(微信推送)SendKey,默认空;在宿主用 SERVERCHAN_SENDKEY=xxx docker compose up 传入。
+      SERVERCHAN_SENDKEY: ${SERVERCHAN_SENDKEY:-}
+      # 缓存目录指向挂载卷,持久化 SQLite + 行情缓存。
+      MARKET_CACHE_DIR: /data
+      # 每日定时推送(对标 Python compose scheduler service)。Spring relaxed binding:
+      # SCHEDULER_ENABLED ↔ scheduler.enabled、SCHEDULER_CRON ↔ scheduler.cron、
+      # SCHEDULER_MARKETS ↔ scheduler.markets。
+      # 默认 false——用户不显式开就不推送;要开:SCHEDULER_ENABLED=true docker compose up。
+      SCHEDULER_ENABLED: ${SCHEDULER_ENABLED:-false}
+      # cron 为容器本地时区(默认 UTC),如需北京时间收盘后推送,可一并设 TZ=Asia/Shanghai。
+      # 默认每工作日 16:30 触发。
+      SCHEDULER_CRON: ${SCHEDULER_CRON:-0 30 16 * * MON-FRI}
+      # 要推送的 market(逗号分隔),默认 us,cn。
+      SCHEDULER_MARKETS: ${SCHEDULER_MARKETS:-us,cn}
+      # 容器时区(影响 SCHEDULER_CRON 的解读),默认 UTC;按需取消注释。
+      # TZ: Asia/Shanghai
+      # 可选:容器内访问外网若需走宿主代理,取消下面注释。
+      # 容器里的 127.0.0.1 是容器自身,访问宿主代理须用 host.docker.internal。
+      # JAVA_TOOL_OPTIONS: >-
+      #   -Dhttp.proxyHost=host.docker.internal -Dhttp.proxyPort=7897
+      #   -Dhttps.proxyHost=host.docker.internal -Dhttps.proxyPort=7897
+      #   -Dhttp.nonProxyHosts=localhost|127.0.0.1
+    volumes:
+      # 命名卷持久化缓存 / SQLite;容器重建数据不丢。
+      - stock-data:/data
+    restart: unless-stopped
+
+volumes:
+  stock-data:

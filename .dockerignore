@@ -1,0 +1,14 @@
+# 缩小构建上下文:这些都不需要进 build 镜像。
+target/
+.cache/
+data/
+*.sqlite
+*.db
+.git/
+.gitignore
+.idea/
+*.iml
+README.md
+Dockerfile
+.dockerignore
+docker-compose.yml

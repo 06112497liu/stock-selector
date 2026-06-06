@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>策略参数配置</title>
+  <th:block th:replace="~{fragments :: head-assets}"></th:block>
+</head>
+<body th:with="active='params'">
+  <header th:replace="~{fragments :: header(${market})}"></header>
+  <nav th:replace="~{fragments :: tabs(${market})}"></nav>
+
+  <div class="container">
+    <h1 class="page-title">策略参数配置</h1>
+    <div th:replace="~{fragments :: disclaimer}"></div>
+
+    <div th:if="${saved}" class="ok">已保存,下次生成信号 / 回测生效。</div>
+
+    <div th:if="${errors != null and !errors.isEmpty()}" class="err">
+      参数非法,未保存:
+      <ul>
+        <li th:each="e : ${errors}" th:text="${e}">err</li>
+      </ul>
+    </div>
+
+    <p class="note">
+      以下仅为<b>选股策略参数</b>:买入名单取前 topN、个股止损线、三个因子权重。
+      本工具默认策略 alpha 未经样本外验证,调参不保证盈利,仅作学习 / 框架演示。
+    </p>
+
+    <div class="card">
+      <form method="post" th:action="@{/params}">
+        <input type="hidden" name="market" th:value="${market}">
+
+        <div class="field">
+          <label for="topN">买入名单 topN(取打分最高的前 N 只)</label>
+          <input type="number" id="topN" name="topN" min="1" max="20" step="1"
+                 th:value="${topN}" required>
+          <div class="hint">整数,范围 1..20。</div>
+        </div>
+
+        <div class="field">
+          <label for="stopLossPct">个股止损线 stopLossPct</label>
+          <input type="number" id="stopLossPct" name="stopLossPct" min="-0.5" max="0" step="0.01"
+                 th:value="${stopLossPct}" required>
+          <div class="hint">自入场价的跌幅阈值,如 -0.08 表示跌 8% 触发该卖;范围 -0.5..0(必须 ≤0)。</div>
+        </div>
+
+        <h2 class="section-title">因子权重</h2>
+        <p class="hint" style="margin-bottom:14px;">
+          正 = 该因子越大越优先,负 = 该因子越小越优先;范围 -2..2。
+        </p>
+
+        <div class="field" th:each="f : ${weights}">
+          <label th:for="'w_' + ${f.key}" th:text="${f.key}">factor</label>
+          <input type="number" th:id="'w_' + ${f.key}" th:name="'w_' + ${f.key}"
+                 min="-2" max="2" step="0.1" th:value="${f.value}" required>
+          <div class="hint" th:switch="${f.key}">
+            <span th:case="'mom_20'">20 日动量:正=偏好上涨动量强的票,负=偏好弱势票。</span>
+            <span th:case="'reversal_5'">5 日反转:正=偏好近 5 日反转上行的票,负=反向。</span>
+            <span th:case="'vol_20'">20 日波动率:正=偏好高波动,负=偏好低波动(默认 -0.5,偏好低波动)。</span>
+            <span th:case="*">正=该因子越大越优先,负=越小越优先。</span>
+          </div>
+        </div>
+
+        <div class="btn-bar">
+          <button type="submit">保存</button>
+        </div>
+      </form>
+    </div>
+
+    <form method="post" th:action="@{/params/reset}">
+      <input type="hidden" name="market" th:value="${market}">
+      <button type="submit" class="btn-secondary">恢复默认</button>
+    </form>
+  </div>
+</body>
+</html>

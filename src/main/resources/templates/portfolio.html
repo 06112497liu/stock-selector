@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>持仓与净值</title>
+  <th:block th:replace="~{fragments :: head-assets}"></th:block>
+</head>
+<body th:with="active='portfolio'">
+  <header th:replace="~{fragments :: header(${market})}"></header>
+  <nav th:replace="~{fragments :: tabs(${market})}"></nav>
+
+  <div class="container">
+    <h1 class="page-title">持仓与净值</h1>
+    <div th:replace="~{fragments :: disclaimer}"></div>
+
+    <div th:if="${param.reconciled != null}" class="reconciled">
+      账本已更新、净值基准已重置。
+    </div>
+
+    <!-- 账户摘要 -->
+    <div class="card">
+      <div class="toolbar">
+        <!-- 刷新最新数据:清面板缓存,下次按最新现价重算持仓市值 / 净值 -->
+        <form method="post" th:action="@{/refresh}">
+          <input type="hidden" name="market" th:value="${market}">
+          <input type="hidden" name="from" value="/portfolio">
+          <button type="submit" class="btn-secondary">刷新最新数据</button>
+        </form>
+      </div>
+      <div class="summary">
+        <span class="stat"><span class="stat-label">现金</span>
+          <b class="stat-value" th:text="${#numbers.formatDecimal(view.summary().cash(), 1, 2)}">0.00</b></span>
+        <span class="stat"><span class="stat-label">持仓市值</span>
+          <b class="stat-value" th:text="${#numbers.formatDecimal(view.summary().positionsValue(), 1, 2)}">0.00</b></span>
+        <span class="stat"><span class="stat-label">净值</span>
+          <b class="stat-value" th:text="${#numbers.formatDecimal(view.summary().netValue(), 1, 2)}">0.00</b></span>
+      </div>
+      <p class="empty" th:if="${view.latestDay() == null}" style="margin-top:14px">
+        暂无最新行情(联网失败或无缓存),本次访问未记录净值。
+      </p>
+    </div>
+
+    <!-- 持仓表 -->
+    <div class="card">
+      <h2 class="section-title">持仓</h2>
+      <div class="table-wrap">
+        <table class="numeric">
+          <thead><tr>
+            <th class="code">code</th><th class="name">名称</th><th>股数</th><th>成本价</th>
+            <th>现价</th><th>市值</th><th>浮动盈亏</th><th>浮动盈亏%</th>
+          </tr></thead>
+          <tbody>
+            <tr th:each="row : ${view.rows()}">
+              <td class="code" th:text="${row.code()}">CODE</td>
+              <td class="name" th:text="${row.name()}">名称</td>
+              <td th:text="${#numbers.formatDecimal(row.shares(), 1, 2)}">0</td>
+              <td th:text="${#numbers.formatDecimal(row.avgCost(), 1, 2)}">0.00</td>
+              <td th:text="${row.hasPrice()} ? ${#numbers.formatDecimal(row.price(), 1, 2)} : 'N/A'">0.00</td>
+              <td th:text="${#numbers.formatDecimal(row.marketValue(), 1, 2)}">0.00</td>
+              <td th:classappend="${row.pnl() == row.pnl()} ? (${row.pnl() >= 0} ? 'gain' : 'loss') : ''"
+                  th:text="${row.pnl() == row.pnl()} ? ${#numbers.formatDecimal(row.pnl(), 1, 2)} : 'N/A'">0.00</td>
+              <td th:classappend="${row.pnlPct() == row.pnlPct()} ? (${row.pnlPct() >= 0} ? 'gain' : 'loss') : ''"
+                  th:text="${row.pnlPct() == row.pnlPct()} ? (${#numbers.formatDecimal(row.pnlPct() * 100, 1, 2)} + '%') : 'N/A'">0%</td>
+            </tr>
+            <tr th:if="${view.rows().isEmpty()}"><td colspan="8" class="empty">暂无持仓,去对账录入券商真实持仓</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 净值曲线 -->
+    <div class="card">
+      <h2 class="section-title">净值曲线</h2>
+      <div th:if="${!view.hasNav()}" class="empty">暂无净值记录,先去对账。</div>
+      <svg th:if="${view.hasNav()}" class="chart" width="640" height="240" viewBox="0 0 640 240"
+           xmlns="http://www.w3.org/2000/svg">
+        <polyline fill="none" stroke="#2563eb" stroke-width="1.5"
+                  th:attr="points=${view.navPolyline()}"></polyline>
+      </svg>
+    </div>
+  </div>
+</body>
+</html>
