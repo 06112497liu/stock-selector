@@ -1,9 +1,9 @@
 services:
   web:
     build: .
-    image: ai-stock-selector-java:local
+    image: stock-selector-01:local
     ports:
-      - "8080:8080"
+      - "8081:8080"
     environment:
       # Server酱(微信推送)SendKey,默认空;在宿主用 SERVERCHAN_SENDKEY=xxx docker compose up 传入。
       SERVERCHAN_SENDKEY: ${SERVERCHAN_SENDKEY:-}

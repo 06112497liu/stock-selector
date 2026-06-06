@@ -106,8 +106,8 @@ docker compose up -d --build
 
 随后访问:
 
-- 选股建议:<http://localhost:8080/signals>(默认美股,`?market=us|cn` 切市场)
-- 样本外回测:<http://localhost:8080/backtest?market=us>
+- 选股建议:<http://localhost:8081/signals>(默认美股,`?market=us|cn` 切市场)
+- 样本外回测:<http://localhost:8081/backtest?market=us>
 
 > 镜像构建阶段 `-DskipTests` 跳过测试加速(测试已在本机 / CI 跑过)。
 > 本机带代理时,curl 本地服务记得 `--noproxy '*'` 绕过代理。
