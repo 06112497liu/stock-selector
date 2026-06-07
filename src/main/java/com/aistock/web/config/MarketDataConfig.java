@@ -12,6 +12,7 @@ import com.aistock.notify.ServerChanNotifier;
 import com.aistock.service.MarketDataService;
 import com.aistock.storage.ParamsStore;
 import com.aistock.storage.Store;
+import com.aistock.storage.WatchlistStore;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -109,6 +110,12 @@ public class MarketDataConfig {
     @Bean
     public ParamsStore cnParams(MarketProperties props) {
         return new ParamsStore(cacheFile(props, "cn_params.sqlite"));
+    }
+
+    /** 自选股分组 + 股票的持久化存储(独立 SQLite)。 */
+    @Bean
+    public WatchlistStore watchlistStore(MarketProperties props) {
+        return new WatchlistStore(cacheFile(props, "watchlists.sqlite"));
     }
 
     private static String cacheFile(MarketProperties props, String name) {

@@ -50,7 +50,7 @@ class PanelCacheTest {
     @Test
     void secondCall_hitsCache_noNewFetch() {
         CountingSource us = new CountingSource();
-        PanelCache cache = new PanelCache(svc(us), svc(new CountingSource()), 1800, () -> 0L);
+        PanelCache cache = new PanelCache(svc(us), svc(new CountingSource()), null, 1800, () -> 0L);
 
         PanelCache.PanelBundle first = cache.bundle("us");
         int afterFirst = us.calls.get();
@@ -66,7 +66,7 @@ class PanelCacheTest {
     void ttlExpiry_rebuilds_andRefetches() {
         CountingSource us = new CountingSource();
         AtomicLong now = new AtomicLong(0L);
-        PanelCache cache = new PanelCache(svc(us), svc(new CountingSource()), 1800, now::get);
+        PanelCache cache = new PanelCache(svc(us), svc(new CountingSource()), null, 1800, now::get);
 
         cache.bundle("us");
         int afterFirst = us.calls.get();
@@ -85,7 +85,7 @@ class PanelCacheTest {
     @Test
     void refresh_invalidates_forcesRebuild() {
         CountingSource us = new CountingSource();
-        PanelCache cache = new PanelCache(svc(us), svc(new CountingSource()), 1800, () -> 0L);
+        PanelCache cache = new PanelCache(svc(us), svc(new CountingSource()), null, 1800, () -> 0L);
 
         cache.bundle("us");
         int afterFirst = us.calls.get();
@@ -98,7 +98,7 @@ class PanelCacheTest {
     @Test
     void backtest_cachedByMarket_buildsOnce() {
         CountingSource us = new CountingSource();
-        PanelCache cache = new PanelCache(svc(us), svc(new CountingSource()), 1800, () -> 0L);
+        PanelCache cache = new PanelCache(svc(us), svc(new CountingSource()), null, 1800, () -> 0L);
 
         AtomicInteger builderCalls = new AtomicInteger();
         SignalService.BacktestView v1 = cache.backtest("us", () -> {
@@ -118,7 +118,7 @@ class PanelCacheTest {
     void markets_areIsolated() {
         CountingSource us = new CountingSource();
         CountingSource cn = new CountingSource();
-        PanelCache cache = new PanelCache(svc(us), svc(cn), 1800, () -> 0L);
+        PanelCache cache = new PanelCache(svc(us), svc(cn), null, 1800, () -> 0L);
 
         cache.bundle("us");
         assertEquals(CODES.size(), us.calls.get());
@@ -131,7 +131,7 @@ class PanelCacheTest {
     @Test
     void invalidate_alsoClearsBacktest() {
         CountingSource us = new CountingSource();
-        PanelCache cache = new PanelCache(svc(us), svc(new CountingSource()), 1800, () -> 0L);
+        PanelCache cache = new PanelCache(svc(us), svc(new CountingSource()), null, 1800, () -> 0L);
 
         AtomicInteger builderCalls = new AtomicInteger();
         cache.backtest("us", () -> {

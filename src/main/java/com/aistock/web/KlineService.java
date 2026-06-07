@@ -20,28 +20,24 @@ public class KlineService {
 
     private final KlineSource usKlineSource;
     private final KlineSource cnKlineSource;
+    private final WatchlistService watchlistService;
 
     public KlineService(@Qualifier("usKlineSource") KlineSource usKlineSource,
-                        @Qualifier("cnKlineSource") KlineSource cnKlineSource) {
+                        @Qualifier("cnKlineSource") KlineSource cnKlineSource,
+                        WatchlistService watchlistService) {
         this.usKlineSource = usKlineSource;
         this.cnKlineSource = cnKlineSource;
+        this.watchlistService = watchlistService;
     }
 
-    /**
-     * 取某市场某 code 在 {@code periodCode} 周期下的 K 线。
-     *
-     * @param market     市场("us" | "cn",经 {@link SignalService#normalizeMarket} 归一)
-     * @param code       股票代码;空 / null 直接返回空 List
-     * @param periodCode 前端周期码(非法 / 空降级日线,见 {@link KlinePeriod#fromCode})
-     * @return K 线列表(oldest-first);任何失败降级为空 List,绝不抛
-     */
     public List<KlinePoint> kline(String market, String code, String periodCode) {
         if (code == null || code.isBlank()) {
             return List.of();
         }
         KlinePeriod period = KlinePeriod.fromCode(periodCode);
-        KlineSource source = "cn".equals(SignalService.normalizeMarket(market))
-                ? cnKlineSource : usKlineSource;
+        String normalized = SignalService.normalizeMarket(market);
+        String underlying = watchlistService == null ? normalized : watchlistService.underlyingMarket(normalized);
+        KlineSource source = "cn".equals(underlying) ? cnKlineSource : usKlineSource;
         return source.fetchKline(code.trim(), period);
     }
 }

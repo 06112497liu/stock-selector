@@ -38,7 +38,7 @@ class SignalViewChangeTest {
 
     private static SignalView viewOf(Map<String, List<Bar>> barsByCode) {
         MarketPanel panel = new MarketPanel(barsByCode);
-        return new SignalView("us", Map.of(), Map.of(), panel, panel.tradingDays().isEmpty()
+        return new SignalView("us", "us", Map.of(), Map.of(), panel, panel.tradingDays().isEmpty()
                 ? null : panel.tradingDays().get(panel.tradingDays().size() - 1),
                 false, new Recommendation(List.of(), List.of(), List.of()), "");
     }
@@ -91,8 +91,7 @@ class SignalViewChangeTest {
 
     @Test
     void nullPanelIsNa() {
-        // empty 视图 panel=null → N/A,不报错。
-        SignalView v = SignalView.empty("us", Map.of());
+        SignalView v = SignalView.empty("us", "us", Map.of());
         assertEquals("N/A", v.changeDisplay("ANY"));
         assertEquals("", v.changeClass("ANY"));
     }

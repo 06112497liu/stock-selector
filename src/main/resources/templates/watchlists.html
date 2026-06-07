@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>自选股管理</title>
+  <th:block th:replace="~{fragments :: head-assets}"></th:block>
+</head>
+<body th:with="active='watchlists'">
+  <header th:replace="~{fragments :: header(${market})}"></header>
+  <nav th:replace="~{fragments :: tabs(${market})}"></nav>
+
+  <div class="container">
+    <h1 class="page-title">自选股管理</h1>
+    <div th:replace="~{fragments :: disclaimer}"></div>
+
+    <div th:if="${msg != null}" class="ok" th:text="${msg}">操作成功</div>
+    <div th:if="${err != null}" class="err" th:text="${err}">操作失败</div>
+
+    <!-- 创建分组 -->
+    <div class="card">
+      <h2 class="section-title">创建新分组</h2>
+      <form method="post" th:action="@{/watchlists/create}" class="form-row">
+        <div class="form-field">
+          <label>分组名</label>
+          <input type="text" name="groupName" placeholder="如 科技股、医药股、银行股" required>
+        </div>
+        <div class="form-field">
+          <label>市场类型</label>
+          <select name="marketType" style="height:36px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;font-family:inherit;font-size:14px;">
+            <option value="us">美股 (Yahoo)</option>
+            <option value="cn">A股 (东财)</option>
+          </select>
+        </div>
+        <button type="submit">创建分组</button>
+      </form>
+      <p class="note">分组创建后可在顶栏市场切换里看到,与美股/A股同级,单独计算选股排名和信号。</p>
+    </div>
+
+    <!-- 已有分组列表 -->
+    <div class="card" th:if="${#lists.isEmpty(groups)}">
+      <p class="empty">还没有自选股分组,先在上方创建一个吧。</p>
+    </div>
+
+    <div class="card" th:each="detail : ${groups}">
+      <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;">
+        <h2 class="section-title" style="margin:0;">
+          <span th:text="${detail.group.groupName()}">分组名</span>
+          <span class="push-hint" style="margin-left:8px;">
+            <span th:text="${detail.group.marketType() == 'cn'} ? 'A股' : '美股'">市场</span>
+            · <span th:text="${#lists.size(detail.stocks())}">0</span> 只
+          </span>
+        </h2>
+        <div class="btn-bar">
+          <a th:href="@{/signals(market=${detail.group.groupId()})}" class="btn btn-secondary">查看选股信号</a>
+          <form method="post" th:action="@{/watchlists/delete}" style="display:inline;margin:0;"
+                th:onsubmit="'return confirm(\'确定删除分组 ' + ${detail.group.groupName()} + ' ?\')'">
+            <input type="hidden" name="groupId" th:value="${detail.group.groupId()}">
+            <button type="submit" class="btn-secondary danger" style="color:var(--neg);">删除分组</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- 加股票 -->
+      <form method="post" th:action="@{/watchlists/addStock}" class="form-row">
+        <input type="hidden" name="groupId" th:value="${detail.group.groupId()}">
+        <div class="form-field" style="flex:1;min-width:200px;">
+          <label>添加股票代码</label>
+          <input type="text" name="code" th:placeholder="${detail.group.marketType() == 'cn'} ? '如 600519' : '如 AAPL'" required>
+        </div>
+        <button type="submit">加入</button>
+      </form>
+      <p class="note" th:if="${detail.group.marketType() == 'us'}">美股代码用大写字母,如 AAPL、MSFT、NVDA。输入后会校验并拉取历史数据。</p>
+      <p class="note" th:if="${detail.group.marketType() == 'cn'}">A股用 6 位数字代码,如 600519(贵州茅台)、000001(平安银行)。</p>
+
+      <!-- 股票列表 -->
+      <div class="table-wrap" th:unless="${#lists.isEmpty(detail.stocks())}">
+        <table>
+          <thead><tr><th>code</th><th>名称</th><th>操作</th></tr></thead>
+          <tbody>
+            <tr th:each="s : ${detail.stocks()}">
+              <td><a th:href="@{/chart(market=${detail.group.groupId()},code=${s.code()})}" th:text="${s.code()}">CODE</a></td>
+              <td th:text="${s.name() != null} ? ${s.name()} : ${s.code()}">名称</td>
+              <td>
+                <form method="post" th:action="@{/watchlists/removeStock}" style="display:inline;margin:0;"
+                      th:onsubmit="'return confirm(\'确定移除 ' + ${s.code()} + ' ?\')'">
+                  <input type="hidden" name="groupId" th:value="${detail.group.groupId()}">
+                  <input type="hidden" name="code" th:value="${s.code()}">
+                  <button type="submit" class="btn-secondary danger" style="color:var(--neg);padding:4px 10px;font-size:12px;">移除</button>
+                </form>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="empty" th:if="${#lists.isEmpty(detail.stocks())}" style="margin-top:10px;">还没有股票,先加几只吧。</p>
+    </div>
+  </div>
+</body>
+</html>

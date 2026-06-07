@@ -42,10 +42,10 @@ class SignalServiceParamsTest {
     @Test
     void topN_changesBuyListSize() {
         MarketDataService mds = syntheticService();
-        PanelCache cache = new PanelCache(mds, mds, 1800, System::currentTimeMillis);
+        PanelCache cache = new PanelCache(mds, mds, null, 1800, System::currentTimeMillis);
         ParamsStore us = TestStores.tmpParams("us");
         SignalService svc = new SignalService(TestStores.tmp("us"), TestStores.tmp("cn"),
-                us, TestStores.tmpParams("cn"), null, cache);
+                us, TestStores.tmpParams("cn"), null, cache, null);
 
         Map<String, Double> w = new LinkedHashMap<>(
                 com.aistock.selector.FactorSelector.DEFAULT_WEIGHTS);
@@ -60,10 +60,10 @@ class SignalServiceParamsTest {
     @Test
     void invertingMomentumWeight_flipsBuyList() {
         MarketDataService mds = syntheticService();
-        PanelCache cache = new PanelCache(mds, mds, 1800, System::currentTimeMillis);
+        PanelCache cache = new PanelCache(mds, mds, null, 1800, System::currentTimeMillis);
         ParamsStore us = TestStores.tmpParams("us");
         SignalService svc = new SignalService(TestStores.tmp("us"), TestStores.tmp("cn"),
-                us, TestStores.tmpParams("cn"), null, cache);
+                us, TestStores.tmpParams("cn"), null, cache, null);
 
         // 只保留 mom_20 权重,排除 reversal_5 / vol_20 干扰,使排名纯由动量方向决定。
         us.save(new StrategyParams(3, -0.08, Map.of("mom_20", 1.0)));
@@ -81,10 +81,10 @@ class SignalServiceParamsTest {
     void saveParams_invalidatesBacktestCache() {
         MarketDataService mds = syntheticService();
         AtomicInteger builds = new AtomicInteger();
-        PanelCache cache = new PanelCache(mds, mds, 1800, System::currentTimeMillis);
+        PanelCache cache = new PanelCache(mds, mds, null, 1800, System::currentTimeMillis);
         ParamsStore us = TestStores.tmpParams("us");
         SignalService svc = new SignalService(TestStores.tmp("us"), TestStores.tmp("cn"),
-                us, TestStores.tmpParams("cn"), null, cache);
+                us, TestStores.tmpParams("cn"), null, cache, null);
 
         // 第一次回测:builder 跑一次并缓存。
         svc.backtest("us");

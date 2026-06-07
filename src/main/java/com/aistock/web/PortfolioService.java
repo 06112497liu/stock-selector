@@ -7,6 +7,7 @@ import com.aistock.storage.Reconcile;
 import com.aistock.storage.Store;
 import com.aistock.storage.Store.NavPoint;
 import com.aistock.storage.Store.Position;
+import com.aistock.storage.WatchlistStore;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
@@ -14,13 +15,6 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
-/**
- * 账本 / 净值视图门面:按 market 选对应 {@link Store} 与 {@link MarketDataService},
- * 组装「持仓与净值」页与「对账」页的视图,并落净值。
- *
- * <p>边界铁律:本服务<b>不参与选股 / 不按资产算金额</b>。账本只用于对账、净值展示,
- * 以及给 /signals 提供「持有哪些 code + 入场价(avg_cost)」。
- */
 @Service
 public class PortfolioService {
 
@@ -29,26 +23,37 @@ public class PortfolioService {
     private final Store usStore;
     private final Store cnStore;
     private final PanelCache panelCache;
+    private final WatchlistService watchlistService;
 
     public PortfolioService(@Qualifier("usMarketDataService") MarketDataService us,
                             @Qualifier("cnMarketDataService") MarketDataService cn,
                             @Qualifier("usStore") Store usStore,
                             @Qualifier("cnStore") Store cnStore,
-                            PanelCache panelCache) {
+                            PanelCache panelCache,
+                            WatchlistService watchlistService) {
         this.us = us;
         this.cn = cn;
         this.usStore = usStore;
         this.cnStore = cnStore;
         this.panelCache = panelCache;
+        this.watchlistService = watchlistService;
     }
 
-    /** 按 market 选账本(供其它服务复用,如 SignalService 读真实持仓)。 */
+    /** 按 market 选账本。 */
     public Store storeFor(String market) {
-        return "cn".equals(SignalService.normalizeMarket(market)) ? cnStore : usStore;
+        market = SignalService.normalizeMarket(market);
+        if (WatchlistStore.isWatchlist(market)) {
+            return watchlistService.storeFor(market);
+        }
+        return "cn".equals(market) ? cnStore : usStore;
     }
 
     private MarketDataService serviceFor(String market) {
-        return "cn".equals(SignalService.normalizeMarket(market)) ? cn : us;
+        market = SignalService.normalizeMarket(market);
+        if (WatchlistStore.isWatchlist(market)) {
+            return watchlistService.marketDataServiceFor(market);
+        }
+        return "cn".equals(market) ? cn : us;
     }
 
     /**

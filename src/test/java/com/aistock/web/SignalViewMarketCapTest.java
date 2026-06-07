@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class SignalViewMarketCapTest {
 
     private static SignalView view(String market, Map<String, OptionalDouble> caps) {
-        return new SignalView(market, Map.of(), caps, null, null, false,
+        return new SignalView(market, market, Map.of(), caps, null, null, false,
                 new Recommendation(List.of(), List.of(), List.of()), "");
     }
 

@@ -31,7 +31,7 @@ class KlineControllerTest {
     }
 
     private MockMvc mvc() {
-        KlineService service = new KlineService(new StubSource(), new StubSource());
+        KlineService service = new KlineService(new StubSource(), new StubSource(), null);
         return MockMvcBuilders.standaloneSetup(new KlineController(service)).build();
     }
 

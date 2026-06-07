@@ -24,7 +24,7 @@ class DailySignalSchedulerTest {
         final List<String> invalidated = new ArrayList<>();
 
         StubPanelCache() {
-            super(null, null, 1800, () -> 0L);
+            super(null, null, null, 1800, () -> 0L);
         }
 
         @Override
@@ -40,7 +40,7 @@ class DailySignalSchedulerTest {
         final SignalService.PushResult result;
 
         StubSignalService(SignalService.PushResult result, String throwForMarket) {
-            super(null, null, null, null, null, null);
+            super(null, null, null, null, null, null, null);
             this.result = result;
             this.throwForMarket = throwForMarket;
         }

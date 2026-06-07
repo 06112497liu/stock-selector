@@ -25,9 +25,9 @@ class SignalServiceHoldingsMergeTest {
                 c -> "名称-" + c,
                 c -> java.util.OptionalDouble.empty(),
                 SignalControllerTest.CODES);
-        PanelCache cache = new PanelCache(svc, svc, 1800, System::currentTimeMillis);
+        PanelCache cache = new PanelCache(svc, svc, null, 1800, System::currentTimeMillis);
         return new SignalService(usStore, TestStores.tmp("cn"),
-                TestStores.tmpParams("us"), TestStores.tmpParams("cn"), null, cache);
+                TestStores.tmpParams("us"), TestStores.tmpParams("cn"), null, cache, null);
     }
 
     private static boolean buyHeld(SignalService.SignalView view, String code) {

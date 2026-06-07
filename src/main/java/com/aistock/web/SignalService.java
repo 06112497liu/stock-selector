@@ -15,6 +15,7 @@ import com.aistock.storage.ParamsStore;
 import com.aistock.storage.StrategyParams;
 import com.aistock.storage.Store;
 import com.aistock.storage.Store.Position;
+import com.aistock.storage.WatchlistStore;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
@@ -53,6 +54,7 @@ public class SignalService {
     private final ParamsStore cnParams;
     private final ServerChanNotifier notifier;
     private final PanelCache panelCache;
+    private final WatchlistService watchlistService;
     private final RecommendEngine recommendEngine = new RecommendEngine();
     private final BacktestEngine backtestEngine = new BacktestEngine();
     private final BacktestComparison comparison = new BacktestComparison();
@@ -62,25 +64,45 @@ public class SignalService {
                          @Qualifier("usParams") ParamsStore usParams,
                          @Qualifier("cnParams") ParamsStore cnParams,
                          ServerChanNotifier notifier,
-                         PanelCache panelCache) {
+                         PanelCache panelCache,
+                         WatchlistService watchlistService) {
         this.usStore = usStore;
         this.cnStore = cnStore;
         this.usParams = usParams;
         this.cnParams = cnParams;
         this.notifier = notifier;
         this.panelCache = panelCache;
+        this.watchlistService = watchlistService;
     }
 
     private Store storeFor(String market) {
-        return "cn".equals(normalizeMarket(market)) ? cnStore : usStore;
+        market = normalizeMarket(market);
+        if (WatchlistStore.isWatchlist(market)) {
+            return watchlistService.storeFor(market);
+        }
+        return "cn".equals(market) ? cnStore : usStore;
     }
 
     private ParamsStore paramsStoreFor(String market) {
-        return "cn".equals(normalizeMarket(market)) ? cnParams : usParams;
+        market = normalizeMarket(market);
+        if (WatchlistStore.isWatchlist(market)) {
+            return watchlistService.paramsFor(market);
+        }
+        return "cn".equals(market) ? cnParams : usParams;
     }
 
-    /** 规整 market 参数,非法值回退到 us。 */
+    private String underlyingMarket(String market) {
+        if (watchlistService == null) {
+            return normalizeMarket(market);
+        }
+        return watchlistService.underlyingMarket(market);
+    }
+
+    /** 规整 market 参数:wl_ 前缀的自选股分组原样保留;其余非法值回退到 us。 */
     public static String normalizeMarket(String market) {
+        if (market != null && WatchlistStore.isWatchlist(market)) {
+            return market;
+        }
         return "cn".equalsIgnoreCase(market) ? "cn" : "us";
     }
 
@@ -108,7 +130,8 @@ public class SignalService {
 
         if (day == null) {
             // 完全无数据(联网失败且无缓存):友好降级,不抛 500。
-            return SignalView.empty(market, names, marketCaps);
+            String underlying = underlyingMarket(market);
+            return SignalView.empty(market, underlying, names, marketCaps);
         }
 
         Map<String, Position> ledger = storeFor(market).getPositions();
@@ -134,7 +157,8 @@ public class SignalService {
                 params.topN(), holdings, entries, params.stopLossPct());
 
         boolean stale = day.isBefore(LocalDate.now().minusDays(STALE_DAYS));
-        return new SignalView(market, names, marketCaps, panel, day, stale, reco, holdingsCsv);
+        String underlying = underlyingMarket(market);
+        return new SignalView(market, underlying, names, marketCaps, panel, day, stale, reco, holdingsCsv);
     }
 
     /**
@@ -213,7 +237,9 @@ public class SignalService {
             LocalDate split = days.get(idx);
 
             // 美股可传零印花税;成本口径从简(佣金+滑点)。
-            CostConfig cost = new CostConfig(0.0003, "cn".equals(mkt) ? 0.001 : 0.0, 0.0005);
+            // 自选股分组按其配置的底层 market_type(us/cn)决定印花税。
+            String underlying = underlyingMarket(mkt);
+            CostConfig cost = new CostConfig(0.0003, "cn".equals(underlying) ? 0.001 : 0.0, 0.0005);
             BacktestComparison.Result cmp = comparison.run(
                     panel, split, params.topN(), cost, ML_HORIZON, params.factorWeights());
 
@@ -291,6 +317,7 @@ public class SignalService {
 
     /** 选股建议视图模型(只读)。 */
     public record SignalView(String market,
+                             String underlyingMarket,
                              Map<String, String> names,
                              Map<String, java.util.OptionalDouble> marketCaps,
                              MarketPanel panel,
@@ -302,13 +329,13 @@ public class SignalService {
             return latestDay != null;
         }
 
-        public static SignalView empty(String market, Map<String, String> names) {
-            return empty(market, names, Map.of());
+        public static SignalView empty(String market, String underlyingMarket, Map<String, String> names) {
+            return empty(market, underlyingMarket, names, Map.of());
         }
 
-        public static SignalView empty(String market, Map<String, String> names,
+        public static SignalView empty(String market, String underlyingMarket, Map<String, String> names,
                                        Map<String, java.util.OptionalDouble> marketCaps) {
-            return new SignalView(market, names, marketCaps, null, null, false,
+            return new SignalView(market, underlyingMarket, names, marketCaps, null, null, false,
                     new Recommendation(List.of(), List.of(), List.of()), "");
         }
 
@@ -384,7 +411,7 @@ public class SignalService {
                 return "N/A";
             }
             double v = cap.getAsDouble();
-            String currency = "cn".equals(market) ? "¥" : "$";
+            String currency = "cn".equals(underlyingMarket) ? "¥" : "$";
             if (v >= 1e12) {
                 return currency + String.format(Locale.ROOT, "%.2f", v / 1e12) + "万亿";
             }

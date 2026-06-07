@@ -17,6 +17,10 @@
          th:classappend="${market == 'us'} ? 'active' : ''">美股(Yahoo)</a>
       <a th:href="@{/signals(market='cn')}"
          th:classappend="${market == 'cn'} ? 'active' : ''">A股(东财)</a>
+      <a th:each="g : ${watchlistGroups}"
+         th:href="@{/signals(market=${g.groupId()})}"
+         th:classappend="${market == g.groupId()} ? 'active' : ''"
+         th:text="${g.groupName()} + '(' + (${g.marketType() == 'cn'} ? 'A' : '美') + '股' + ')'">自选分组</a>
     </span>
   </div>
 </header>
@@ -35,6 +39,8 @@
          th:classappend="${active == 'backtest'} ? 'active' : ''">回测</a>
       <a th:href="@{/params(market=${market})}"
          th:classappend="${active == 'params'} ? 'active' : ''">参数配置</a>
+      <a th:href="@{/watchlists}"
+         th:classappend="${active == 'watchlists'} ? 'active' : ''">自选股管理</a>
     </span>
   </div>
 </nav>
