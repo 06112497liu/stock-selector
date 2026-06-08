@@ -8,6 +8,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -96,14 +98,14 @@ public class ParamsController {
         }
 
         signalService.saveParams(mkt, new StrategyParams(topN, stopLoss, weights));
-        return "redirect:/params?market=" + mkt + "&saved=1";
+        return "redirect:/params?market=" + encode(mkt) + "&saved=1";
     }
 
     @PostMapping("/params/reset")
     public String reset(@RequestParam(name = "market", required = false, defaultValue = "us") String market) {
         String mkt = SignalService.normalizeMarket(market);
         signalService.resetParams(mkt);
-        return "redirect:/params?market=" + mkt + "&saved=1";
+        return "redirect:/params?market=" + encode(mkt) + "&saved=1";
     }
 
     /** 用当前(合法)参数填充模型,值为字符串便于模板原样回填。 */
@@ -134,6 +136,14 @@ public class ParamsController {
         } catch (NumberFormatException e) {
             errors.add(label + " 必须是数字");
             return Double.NaN;
+        }
+    }
+
+    private static String encode(String s) {
+        try {
+            return URLEncoder.encode(s == null ? "" : s, StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            return "";
         }
     }
 }

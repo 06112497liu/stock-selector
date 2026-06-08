@@ -7,6 +7,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -60,7 +62,7 @@ public class PortfolioController {
         double cash = parseDouble(cashStr, 0.0);
         portfolioService.applyReconcile(market, positions, cash);
         String normalized = SignalService.normalizeMarket(market);
-        return "redirect:/portfolio?market=" + normalized + "&reconciled=1";
+        return "redirect:/portfolio?market=" + encode(normalized) + "&reconciled=1";
     }
 
     private static Map<String, Position> parsePositions(List<String> codes,
@@ -94,6 +96,14 @@ public class PortfolioController {
             return Double.parseDouble(s.trim());
         } catch (NumberFormatException e) {
             return fallback;
+        }
+    }
+
+    private static String encode(String s) {
+        try {
+            return URLEncoder.encode(s == null ? "" : s, StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            return "";
         }
     }
 }

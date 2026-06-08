@@ -7,6 +7,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import java.nio.charset.StandardCharsets;
+import java.net.URLEncoder;
 import java.util.Map;
 
 /**
@@ -68,7 +70,15 @@ public class SignalController {
         panelCache.invalidate(normalized);
         String target = (from != null && (from.equals("/signals") || from.equals("/backtest") || from.equals("/portfolio")))
                 ? from : "/signals";
-        return "redirect:" + target + "?market=" + normalized;
+        return "redirect:" + target + "?market=" + encode(normalized);
+    }
+
+    private static String encode(String s) {
+        try {
+            return URLEncoder.encode(s == null ? "" : s, StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            return "";
+        }
     }
 
     @GetMapping("/backtest")

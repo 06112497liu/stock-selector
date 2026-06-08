@@ -13,6 +13,8 @@ import com.aistock.storage.ParamsStore;
 import com.aistock.storage.Store;
 import com.aistock.storage.WatchlistStore;
 import com.aistock.storage.WatchlistStore.WatchlistGroup;
+import com.aistock.storage.WatchlistStore.WatchlistStock;
+import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Service;
 
 import java.nio.file.Path;
@@ -75,6 +77,41 @@ public class WatchlistService {
         this.cacheDir = props.getCacheDir();
     }
 
+    /**
+     * 启动时自动迁移旧的包含非 ASCII 字符的 groupId(例如中文 "wl_科技股")
+     * 到全 ASCII slug 形式(如 "wl_u79d1_u6280_u80a1")。
+     * 旧分组被删除,所有 stocks 迁移到新分组。
+     */
+    @PostConstruct
+    public void migrateLegacyGroups() {
+        for (WatchlistGroup g : store.listGroups()) {
+            String id = g.groupId();
+            String rawId = id.startsWith(WatchlistStore.PREFIX)
+                    ? id.substring(WatchlistStore.PREFIX.length())
+                    : id;
+            if (isAscii(rawId)) {
+                continue;
+            }
+            String slug = slugify(g.groupName());
+            String newId = WatchlistStore.toGroupKey(slug);
+            if (newId.equals(g.groupId())) {
+                continue;
+            }
+            // 防重
+            int i = 2;
+            String candidate = newId;
+            while (store.getGroup(candidate) != null && !candidate.equals(g.groupId())) {
+                candidate = newId + "_" + (i++);
+            }
+            // 复制到新分组 + 迁移 stocks
+            store.createGroup(candidate, g.groupName(), g.marketType());
+            for (WatchlistStock s : store.listStocks(g.groupId())) {
+                store.addStock(candidate, s.code(), s.name());
+            }
+            store.deleteGroup(g.groupId());
+        }
+    }
+
     // ---- groups ----------------------------------------------------------
 
     public List<WatchlistGroup> listGroups() {
@@ -85,14 +122,15 @@ public class WatchlistService {
         return store.getGroup(groupKey);
     }
 
-    /** 创建分组。groupId 自动补 wl_ 前缀;marketType 必须是 us 或 cn。 */
+    /** 创建分组。groupId 自动补 wl_ 前缀;marketType 必须是 us 或 cn。
+     *  groupName 中的非 ASCII 字符会被转成全 ASCII 的 unicode hex slug,
+     *  保证 groupId 可安全用于 URL / 文件名。 */
     public String createGroup(String groupName, String marketType) {
         if (groupName == null || groupName.isBlank()) {
             throw new IllegalArgumentException("分组名不能为空");
         }
         String mt = normalizeMarketType(marketType);
-        String rawId = groupName.trim().toLowerCase(Locale.ROOT)
-                .replaceAll("[^a-z0-9\\u4e00-\\u9fa5]+", "_");
+        String rawId = slugify(groupName.trim());
         if (rawId.isEmpty()) {
             rawId = "group";
         }
@@ -335,5 +373,40 @@ public class WatchlistService {
 
     private ParamsStore buildParams(String marketKey) {
         return new ParamsStore(cacheFile(marketKey + "_params.sqlite"));
+    }
+
+    /**
+     * 把任意字符串转成全 ASCII 的 slug。
+     * ASCII 小写字母/数字保留,其它字符(含中文)转成 u{4位hex} 形式。
+     * 连接符非字母数字统一转下划线,连续下划线合并。
+     * 结果稳定(相同输入得到相同输出)、可逆(必要时可还原)、URL/文件名安全。
+     */
+    static String slugify(String name) {
+        if (name == null || name.isEmpty()) return "";
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < name.length(); i++) {
+            char c = name.charAt(i);
+            if (c >= 'a' && c <= 'z') {
+                sb.append(c);
+            } else if (c >= 'A' && c <= 'Z') {
+                sb.append(Character.toLowerCase(c));
+            } else if (c >= '0' && c <= '9') {
+                sb.append(c);
+            } else {
+                sb.append("u").append(String.format("%04x", (int) c));
+            }
+        }
+        String s = sb.toString().replaceAll("_+", "_");
+        if (s.startsWith("_")) s = s.substring(1);
+        if (s.endsWith("_")) s = s.substring(0, s.length() - 1);
+        return s;
+    }
+
+    private static boolean isAscii(String s) {
+        if (s == null) return true;
+        for (int i = 0; i < s.length(); i++) {
+            if (s.charAt(i) > 127) return false;
+        }
+        return true;
     }
 }
