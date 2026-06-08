@@ -71,16 +71,15 @@ public class HealthConfig {
     }
 
     @Bean
-    public HealthIndicator yahooFinanceHealthIndicator() {
+    public HealthIndicator yahooFinanceHealthIndicator(YahooClient yahooClient) {
         return () -> {
             try {
-                YahooClient client = new YahooClient();
-                List<com.aistock.datasource.Bar> bars = client.fetchDaily(
+                List<com.aistock.datasource.Bar> bars = yahooClient.fetchDaily(
                         "AAPL",
                         LocalDate.now().minusDays(10),
                         LocalDate.now()
                 );
-                OptionalDouble marketCap = client.fetchMarketCap("AAPL");
+                OptionalDouble marketCap = yahooClient.fetchMarketCap("AAPL");
 
                 Health.Builder builder = Health.up()
                         .withDetail("dataPointsFetched", bars.size())
@@ -108,16 +107,15 @@ public class HealthConfig {
     }
 
     @Bean
-    public HealthIndicator eastMoneyHealthIndicator() {
+    public HealthIndicator eastMoneyHealthIndicator(EastMoneyClient eastMoneyClient) {
         return () -> {
             try {
-                EastMoneyClient client = new EastMoneyClient();
-                List<com.aistock.datasource.Bar> bars = client.fetchDaily(
+                List<com.aistock.datasource.Bar> bars = eastMoneyClient.fetchDaily(
                         "600519",
                         LocalDate.now().minusDays(10),
                         LocalDate.now()
                 );
-                OptionalDouble marketCap = client.fetchMarketCap("600519");
+                OptionalDouble marketCap = eastMoneyClient.fetchMarketCap("600519");
 
                 Health.Builder builder = Health.up()
                         .withDetail("dataPointsFetched", bars.size())

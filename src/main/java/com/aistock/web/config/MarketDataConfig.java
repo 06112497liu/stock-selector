@@ -40,6 +40,18 @@ public class MarketDataConfig {
         return new ServerChanNotifier(props.getSendkey());
     }
 
+    /** 美股 Yahoo Finance 客户端单例,共享 OkHttpClient + cookie jar + crumb 缓存。 */
+    @Bean
+    public YahooClient yahooClient() {
+        return new YahooClient();
+    }
+
+    /** A 股东方财富客户端单例,共享 OkHttpClient。 */
+    @Bean
+    public EastMoneyClient eastMoneyClient() {
+        return new EastMoneyClient();
+    }
+
     /**
      * 美股行情服务(Yahoo)。
      *
@@ -50,33 +62,31 @@ public class MarketDataConfig {
      * 语义不变(resolver 是纯函数)。
      */
     @Bean
-    public MarketDataService usMarketDataService(MarketProperties props) {
+    public MarketDataService usMarketDataService(MarketProperties props, YahooClient yahooClient) {
         BarCache cache = new BarCache(cacheFile(props, "us.sqlite"));
-        YahooClient client = new YahooClient();
-        YahooSource source = new YahooSource(client, cache);
-        UsNameResolver nameFn = new UsNameResolver(client::fetchName);
-        return new MarketDataService(source, nameFn, client::fetchMarketCap, props.getUs());
+        YahooSource source = new YahooSource(yahooClient, cache);
+        UsNameResolver nameFn = new UsNameResolver(yahooClient::fetchName);
+        return new MarketDataService(source, nameFn, yahooClient::fetchMarketCap, props.getUs());
     }
 
     /** A 股行情服务(东财)。 */
     @Bean
-    public MarketDataService cnMarketDataService(MarketProperties props) {
+    public MarketDataService cnMarketDataService(MarketProperties props, EastMoneyClient eastMoneyClient) {
         BarCache cache = new BarCache(cacheFile(props, "cn.sqlite"));
-        EastMoneyClient client = new EastMoneyClient();
-        EastMoneySource source = new EastMoneySource(client, cache);
-        return new MarketDataService(source, client::fetchName, client::fetchMarketCap, props.getCn());
+        EastMoneySource source = new EastMoneySource(eastMoneyClient, cache);
+        return new MarketDataService(source, eastMoneyClient::fetchName, eastMoneyClient::fetchMarketCap, props.getCn());
     }
 
     /** 美股 K 线数据源(Yahoo chart 接口);{@code @Qualifier("usKlineSource")} 注入。 */
     @Bean
-    public KlineSource usKlineSource() {
-        return new YahooClient();
+    public KlineSource usKlineSource(YahooClient yahooClient) {
+        return yahooClient;
     }
 
     /** A 股 K 线数据源(东财 kline 接口);{@code @Qualifier("cnKlineSource")} 注入。 */
     @Bean
-    public KlineSource cnKlineSource() {
-        return new EastMoneyClient();
+    public KlineSource cnKlineSource(EastMoneyClient eastMoneyClient) {
+        return eastMoneyClient;
     }
 
     /**
