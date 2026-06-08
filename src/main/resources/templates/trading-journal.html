@@ -133,9 +133,9 @@
             <th>价格</th>
             <th>金额</th>
             <th>系统评分</th>
-            <th>操作理由</th>
-            <th>市场环境</th>
-            <th>备注</th>
+            <th style="text-align:left">操作理由</th>
+            <th style="text-align:left">市场环境</th>
+            <th style="text-align:left">备注</th>
             <th></th>
           </tr></thead>
           <tbody>
@@ -159,9 +159,28 @@
                       th:text="${#numbers.formatDecimal(entry.systemScore(), 1, 4)}">0.1234</span>
                 <span th:unless="${entry.hasScore()}" class="empty">N/A</span>
               </td>
-              <td th:text="${entry.reason()}">Top1选中</td>
-              <td th:text="${entry.marketEnv()}">大盘震荡</td>
-              <td th:text="${entry.notes()}">-</td>
+              <td style="text-align:left" th:text="${entry.reason()}">Top1选中</td>
+              <td style="text-align:left" th:text="${entry.marketEnv()}">大盘震荡</td>
+              <td style="text-align:left">
+                <div class="notes-cell">
+                  <span class="notes-display"
+                        th:classappend="${entry.notes() == null or entry.notes().isEmpty()} ? 'empty' : ''"
+                        th:text="${entry.notes() != null and !entry.notes().isEmpty()} ? ${entry.notes()} : '点击补充'"
+                        th:onclick="'toggleNotesEdit(' + ${entry.id()} + ')'"
+                        style="cursor:pointer">点击补充</span>
+                  <form class="notes-edit" method="post" th:action="@{/journal/updateNotes}"
+                        th:id="'notes-form-' + ${entry.id()}" style="display:none">
+                    <input type="hidden" name="id" th:value="${entry.id()}">
+                    <input type="hidden" name="market" th:value="${market}">
+                    <input type="text" name="notes" th:value="${entry.notes()}"
+                           style="width:160px;height:28px;padding:2px 6px;font-size:12px"
+                           placeholder="输入备注...">
+                    <button type="submit" class="btn-secondary" style="padding:2px 8px;font-size:12px">保存</button>
+                    <button type="button" class="btn-secondary" style="padding:2px 8px;font-size:12px"
+                            th:onclick="'toggleNotesEdit(' + ${entry.id()} + ')'">取消</button>
+                  </form>
+                </div>
+              </td>
               <td>
                 <form method="post" th:action="@{/journal/delete}"
                       onsubmit="return confirm('确认删除这条记录?')"
@@ -177,5 +196,23 @@
       </div>
     </div>
   </div>
+
+  <script>
+    function toggleNotesEdit(id) {
+      var display = document.querySelector('#notes-form-' + id).parentElement.querySelector('.notes-display');
+      var form = document.getElementById('notes-form-' + id);
+      if (form.style.display === 'none') {
+        display.style.display = 'none';
+        form.style.display = 'inline-flex';
+        form.style.gap = '4px';
+        form.style.alignItems = 'center';
+        var input = form.querySelector('input[name="notes"]');
+        if (input) { input.focus(); }
+      } else {
+        display.style.display = 'inline';
+        form.style.display = 'none';
+      }
+    }
+  </script>
 </body>
 </html>
