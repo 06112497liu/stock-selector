@@ -82,12 +82,14 @@ public final class WatchlistStore {
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
+                String createdAtStr = rs.getString("created_at");
                 out.add(new WatchlistGroup(
                         rs.getString("group_id"),
                         rs.getString("group_name"),
                         rs.getString("market_type"),
-                        LocalDateTime.parse(rs.getString("created_at"),
-                                DateTimeFormatter.ISO_LOCAL_DATE_TIME)));
+                        createdAtStr != null
+                                ? LocalDateTime.parse(createdAtStr, DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                                : null));
             }
         } catch (SQLException e) {
             throw new IllegalStateException("Failed to list watchlist groups", e);

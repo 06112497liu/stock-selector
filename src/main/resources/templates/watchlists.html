@@ -53,7 +53,8 @@
         <div class="btn-bar">
           <a th:href="@{/signals(market=${detail.group.groupId()})}" class="btn btn-secondary">查看选股信号</a>
           <form method="post" th:action="@{/watchlists/delete}" style="display:inline;margin:0;"
-                th:onsubmit="'return confirm(\'确定删除分组 ' + ${detail.group.groupName()} + ' ?\')'">
+                th:data-confirm="${'确定删除分组 ' + detail.group.groupName() + ' ?'}"
+                onsubmit="return confirm(this.dataset.confirm)">
             <input type="hidden" name="groupId" th:value="${detail.group.groupId()}">
             <button type="submit" class="btn-secondary danger" style="color:var(--neg);">删除分组</button>
           </form>
@@ -82,7 +83,8 @@
               <td th:text="${s.name() != null} ? ${s.name()} : ${s.code()}">名称</td>
               <td>
                 <form method="post" th:action="@{/watchlists/removeStock}" style="display:inline;margin:0;"
-                      th:onsubmit="'return confirm(\'确定移除 ' + ${s.code()} + ' ?\')'">
+                      th:data-confirm="${'确定移除 ' + s.code() + ' ?'}"
+                      onsubmit="return confirm(this.dataset.confirm)">
                   <input type="hidden" name="groupId" th:value="${detail.group.groupId()}">
                   <input type="hidden" name="code" th:value="${s.code()}">
                   <button type="submit" class="btn-secondary danger" style="color:var(--neg);padding:4px 10px;font-size:12px;">移除</button>
