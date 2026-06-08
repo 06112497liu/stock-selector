@@ -12,6 +12,7 @@ import com.aistock.notify.ServerChanNotifier;
 import com.aistock.service.MarketDataService;
 import com.aistock.storage.ParamsStore;
 import com.aistock.storage.Store;
+import com.aistock.storage.TradingJournalStore;
 import com.aistock.storage.WatchlistStore;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -116,6 +117,12 @@ public class MarketDataConfig {
     @Bean
     public WatchlistStore watchlistStore(MarketProperties props) {
         return new WatchlistStore(cacheFile(props, "watchlists.sqlite"));
+    }
+
+    /** 交易日记存储(独立 SQLite,放 cache-dir;Docker 卷持久化)。 */
+    @Bean
+    public TradingJournalStore tradingJournalStore(MarketProperties props) {
+        return new TradingJournalStore(cacheFile(props, "trading_journal.sqlite"));
     }
 
     private static String cacheFile(MarketProperties props, String name) {

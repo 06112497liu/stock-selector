@@ -41,6 +41,8 @@
          th:classappend="${active == 'params'} ? 'active' : ''">参数配置</a>
       <a th:href="@{/watchlists}"
          th:classappend="${active == 'watchlists'} ? 'active' : ''">自选股管理</a>
+      <a th:href="@{/journal(market=${market})}"
+         th:classappend="${active == 'journal'} ? 'active' : ''">交易日记</a>
     </span>
   </div>
 </nav>

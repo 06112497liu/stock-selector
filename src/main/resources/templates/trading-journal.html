@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>交易日记</title>
+  <th:block th:replace="~{fragments :: head-assets}"></th:block>
+</head>
+<body th:with="active='journal'">
+  <header th:replace="~{fragments :: header(${market})}"></header>
+  <nav th:replace="~{fragments :: tabs(${market})}"></nav>
+
+  <div class="container">
+    <h1 class="page-title">交易日记</h1>
+    <div th:replace="~{fragments :: disclaimer}"></div>
+
+    <div th:if="${msg != null}" class="ok" th:text="${msg}"></div>
+    <div th:if="${err != null}" class="err" th:text="${err}"></div>
+
+    <!-- 筛选 + 统计 -->
+    <div class="card">
+      <div class="toolbar">
+        <form method="get" th:action="@{/journal}" class="nav-group" style="gap:8px">
+          <select name="market" onchange="this.form.submit()">
+            <option th:each="m : ${markets}"
+                    th:value="${m.value()}"
+                    th:text="${m.label()}"
+                    th:selected="${market == m.value()}">市场</option>
+          </select>
+        </form>
+      </div>
+      <div class="summary">
+        <span class="stat">
+          <span class="stat-label">买入笔数</span>
+          <b class="stat-value" th:text="${view.buyCount()}">0</b>
+        </span>
+        <span class="stat">
+          <span class="stat-label">卖出笔数</span>
+          <b class="stat-value" th:text="${view.sellCount()}">0</b>
+        </span>
+        <span class="stat">
+          <span class="stat-label">买入总额</span>
+          <b class="stat-value" th:text="${view.totalBuyDisplay()}">0.00</b>
+        </span>
+        <span class="stat">
+          <span class="stat-label">卖出总额</span>
+          <b class="stat-value" th:text="${view.totalSellDisplay()}">0.00</b>
+        </span>
+        <span class="stat">
+          <span class="stat-label">净差额(卖-买)</span>
+          <b class="stat-value"
+             th:classappend="${(view.totalSellAmount() - view.totalBuyAmount()) >= 0} ? 'gain' : 'loss'"
+             th:text="${view.netAmountDisplay()}">0.00</b>
+        </span>
+      </div>
+    </div>
+
+    <!-- 新增交易记录 -->
+    <div class="card">
+      <h2 class="section-title">新增交易记录</h2>
+      <form method="post" th:action="@{/journal/add}">
+        <div class="form-row">
+          <div class="form-field">
+            <label>市场</label>
+            <select name="market">
+              <option th:each="m : ${markets}"
+                      th:value="${m.value()}"
+                      th:text="${m.label()}"
+                      th:selected="${market == m.value() or (market == '' and m.value() == 'us')}">市场</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>操作类型</label>
+            <select name="operationType" required>
+              <option value="BUY">买入</option>
+              <option value="SELL">卖出</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>股票代码</label>
+            <input type="text" name="code" placeholder="如 AAPL / 600519" required>
+          </div>
+          <div class="form-field">
+            <label>数量(股)</label>
+            <input type="number" name="quantity" step="any" min="0" placeholder="如 100" required>
+          </div>
+          <div class="form-field">
+            <label>成交价</label>
+            <input type="number" name="price" step="any" min="0" placeholder="如 150.50" required>
+          </div>
+          <div class="form-field">
+            <label>交易日期时间</label>
+            <input type="datetime-local" name="tradeDate">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field" style="flex:1;min-width:280px">
+            <label>操作理由</label>
+            <input type="text" name="reason" placeholder="为什么买/卖?如:Top1选中、打分转负、止损触发等">
+          </div>
+          <div class="form-field" style="flex:1;min-width:280px">
+            <label>当时市场环境</label>
+            <input type="text" name="marketEnv" placeholder="如:大盘震荡、纳指新高、美联储加息等">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field" style="flex:1;min-width:280px">
+            <label>事后备注(可留空,之后补充)</label>
+            <input type="text" name="notes" placeholder="后续复盘记录">
+          </div>
+        </div>
+        <div class="btn-bar">
+          <button type="submit">添加记录</button>
+          <span class="note" style="align-self:center">
+            系统将自动查询该标的当前最新评分并记录。
+          </span>
+        </div>
+      </form>
+    </div>
+
+    <!-- 交易记录列表 -->
+    <div class="card">
+      <h2 class="section-title">交易记录</h2>
+      <div th:if="${!view.hasEntries()}" class="empty">暂无交易记录。</div>
+      <div th:if="${view.hasEntries()}" class="table-wrap">
+        <table class="numeric">
+          <thead><tr>
+            <th>日期</th>
+            <th>市场</th>
+            <th>操作</th>
+            <th class="code">Code</th>
+            <th class="name">名称</th>
+            <th>数量</th>
+            <th>价格</th>
+            <th>金额</th>
+            <th>系统评分</th>
+            <th>操作理由</th>
+            <th>市场环境</th>
+            <th>备注</th>
+            <th></th>
+          </tr></thead>
+          <tbody>
+            <tr th:each="entry : ${view.entries()}">
+              <td th:text="${entry.tradeDateDisplay()}">2024-01-01 09:30</td>
+              <td th:text="${entry.market()}">us</td>
+              <td>
+                <span th:if="${entry.operationType().name() == 'BUY'}"
+                      class="badge-held" style="color:#dc2626;background:#fef2f2;border-color:#fecaca">买入</span>
+                <span th:if="${entry.operationType().name() == 'SELL'}"
+                      class="badge-held" style="color:#16a34a;background:#ecfdf5;border-color:#a7f3d0">卖出</span>
+              </td>
+              <td class="code" th:text="${entry.code()}">AAPL</td>
+              <td class="name" th:text="${entry.name() != null} ? ${entry.name()} : ${entry.code()}">Apple</td>
+              <td th:text="${#numbers.formatDecimal(entry.quantity(), 1, 2)}">100</td>
+              <td th:text="${#numbers.formatDecimal(entry.price(), 1, 2)}">150.50</td>
+              <td th:text="${#numbers.formatDecimal(entry.amount(), 1, 2)}">15050.00</td>
+              <td>
+                <span th:if="${entry.hasScore()}"
+                      th:classappend="${entry.systemScore() >= 0} ? 'gain' : 'loss'"
+                      th:text="${#numbers.formatDecimal(entry.systemScore(), 1, 4)}">0.1234</span>
+                <span th:unless="${entry.hasScore()}" class="empty">N/A</span>
+              </td>
+              <td th:text="${entry.reason()}">Top1选中</td>
+              <td th:text="${entry.marketEnv()}">大盘震荡</td>
+              <td th:text="${entry.notes()}">-</td>
+              <td>
+                <form method="post" th:action="@{/journal/delete}"
+                      onsubmit="return confirm('确认删除这条记录?')"
+                      style="display:inline">
+                  <input type="hidden" name="id" th:value="${entry.id()}">
+                  <input type="hidden" name="market" th:value="${market}">
+                  <button type="submit" class="btn-secondary" style="padding:4px 10px;font-size:12px">删除</button>
+                </form>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
