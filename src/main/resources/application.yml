@@ -7,6 +7,21 @@ spring:
   thymeleaf:
     cache: false
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+  info:
+    build:
+      enabled: true
+    env:
+      enabled: true
+
 # Server酱(微信推送)SendKey:默认空,可由环境变量 SERVERCHAN_SENDKEY 覆盖。
 serverchan:
   sendkey: ${SERVERCHAN_SENDKEY:}
